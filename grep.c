@@ -935,15 +935,6 @@ static void strip_timestamp(const char *bol, const char **eol_p)
 	}
 }
 
-static struct {
-	const char *field;
-	size_t len;
-} header_field[] = {
-	{ "author ", 7 },
-	{ "committer ", 10 },
-	{ "reflog ", 7 },
-};
-
 static int match_one_pattern(struct grep_pat *p,
 			     const char *bol, const char *eol,
 			     enum grep_context ctx,
@@ -953,18 +944,23 @@ static int match_one_pattern(struct grep_pat *p,
 	const char *start = bol;
 
 	if ((p->token != GREP_PATTERN) &&
-	    ((p->token == GREP_PATTERN_HEAD) != (ctx == GREP_CONTEXT_HEAD)))
+	    ((p->token == GREP_PATTERN_HEAD) != (ctx == GREP_CONTEXT_HEAD)) &&
+	    ((p->token == GREP_PATTERN_BODY) != (ctx == GREP_CONTEXT_BODY)))
 		return 0;
 
 	if (p->token == GREP_PATTERN_HEAD) {
-		const char *field;
-		size_t len;
-		assert(p->field < ARRAY_SIZE(header_field));
-		field = header_field[p->field].field;
-		len = header_field[p->field].len;
-		if (strncmp(bol, field, len))
-			return 0;
-		bol += len;
+		if (!(eflags & REG_NOTBOL)) {
+			const char *field;
+			size_t len;
+
+			assert(p->field < ARRAY_SIZE(grep_header_fields));
+			field = grep_header_fields[p->field].field;
+			len = grep_header_fields[p->field].len;
+			if (strncmp(bol, field, len))
+				return 0;
+			bol += len;
+		}
+
 		switch (p->field) {
 		case GREP_HEADER_AUTHOR:
 		case GREP_HEADER_COMMITTER:
@@ -1158,22 +1154,28 @@ static int match_next_pattern(struct grep_pat *p,
 	return 1;
 }
 
-static int next_match(struct grep_opt *opt,
-		      const char *bol, const char *eol,
-		      enum grep_context ctx, regmatch_t *pmatch, int eflags)
+int grep_next_match(struct grep_opt *opt,
+		    const char *bol, const char *eol,
+		    enum grep_context ctx, regmatch_t *pmatch,
+		    enum grep_header_field field, int eflags)
 {
 	struct grep_pat *p;
 	int hit = 0;
 
 	pmatch->rm_so = pmatch->rm_eo = -1;
 	if (bol < eol) {
-		for (p = opt->pattern_list; p; p = p->next) {
+		for (p = ((ctx == GREP_CONTEXT_HEAD)
+			   ? opt->header_list : opt->pattern_list);
+			  p; p = p->next) {
 			switch (p->token) {
 			case GREP_PATTERN: /* atom */
 			case GREP_PATTERN_HEAD:
 			case GREP_PATTERN_BODY:
-				hit |= match_next_pattern(p, bol, eol, ctx,
-							  pmatch, eflags);
+				if ((field == GREP_HEADER_FIELD_MAX) ||
+				    (p->field == field))
+					hit |= match_next_pattern(p, bol, eol,
+								  ctx, pmatch,
+								  eflags);
 				break;
 			default:
 				break;
@@ -1261,7 +1263,8 @@ static void show_line(struct grep_opt *opt,
 			else if (sign == '=')
 				line_color = opt->colors[GREP_COLOR_FUNCTION];
 		}
-		while (next_match(opt, bol, eol, ctx, &match, eflags)) {
+		while (grep_next_match(opt, bol, eol, ctx, &match,
+				       GREP_HEADER_FIELD_MAX, eflags)) {
 			if (match.rm_so == match.rm_eo)
 				break;
 
