@@ -198,13 +198,14 @@ static int debug_ref_iterator_advance(struct ref_iterator *ref_iterator)
 	return res;
 }
 
-static int debug_ref_iterator_peel(struct ref_iterator *ref_iterator,
-				   struct object_id *peeled)
+static enum ref_iterator_peel_result debug_ref_iterator_peel(
+		struct ref_iterator *ref_iterator,
+		struct object_id *peeled)
 {
 	struct debug_ref_iterator *diter =
 		(struct debug_ref_iterator *)ref_iterator;
-	int res = diter->iter->vtable->peel(diter->iter, peeled);
-	trace_printf_key(&trace_refs, "iterator_peel: %s: %d\n", diter->iter->refname, res);
+	enum ref_iterator_peel_result res = diter->iter->vtable->peel(diter->iter, peeled);
+	trace_printf_key(&trace_refs, "iterator_peel: %s: %d\n", diter->iter->refname, (int) res);
 	return res;
 }
 

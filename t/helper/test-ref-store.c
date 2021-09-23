@@ -5,6 +5,8 @@
 #include "object-store.h"
 #include "repository.h"
 
+static struct repository *repo;
+
 static const char *notnull(const char *arg, const char *name)
 {
 	if (!arg)
@@ -24,18 +26,13 @@ static const char **get_store(const char **argv, struct ref_store **refs)
 	if (!argv[0]) {
 		die("ref store required");
 	} else if (!strcmp(argv[0], "main")) {
+		repo = the_repository;
 		*refs = get_main_ref_store(the_repository);
 	} else if (skip_prefix(argv[0], "submodule:", &gitdir)) {
-		struct strbuf sb = STRBUF_INIT;
-		int ret;
-
-		ret = strbuf_git_path_submodule(&sb, gitdir, "objects/");
-		if (ret)
-			die("strbuf_git_path_submodule failed: %d", ret);
-		add_to_alternates_memory(sb.buf);
-		strbuf_release(&sb);
-
-		*refs = get_submodule_ref_store(gitdir);
+		repo = xmalloc(sizeof(*repo));
+		if (repo_submodule_init(repo, the_repository, gitdir, null_oid()))
+			die("repo_submodule_init failed");
+		*refs = get_main_ref_store(repo);
 	} else if (skip_prefix(argv[0], "worktree:", &gitdir)) {
 		struct worktree **p, **worktrees = get_worktrees();
 
@@ -52,6 +49,7 @@ static const char **get_store(const char **argv, struct ref_store **refs)
 		if (!*p)
 			die("no such worktree: %s", gitdir);
 
+		repo = the_repository;
 		*refs = get_worktree_ref_store(*p);
 	} else
 		die("unknown backend %s", argv[0]);
@@ -113,7 +111,7 @@ static int cmd_for_each_ref(struct ref_store *refs, const char **argv)
 {
 	const char *prefix = notnull(*argv++, "prefix");
 
-	return refs_for_each_ref_in(refs, prefix, each_ref, NULL);
+	return refs_for_each_ref_in(repo, prefix, each_ref, NULL);
 }
 
 static int cmd_resolve_ref(struct ref_store *refs, const char **argv)

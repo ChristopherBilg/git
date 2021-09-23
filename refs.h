@@ -327,17 +327,17 @@ typedef int each_repo_ref_fn(struct repository *r,
  * modifies the reference also returns a nonzero value to immediately
  * stop the iteration. Returned references are sorted.
  */
-int refs_head_ref(struct ref_store *refs,
+int refs_head_ref(struct repository *repo,
 		  each_ref_fn fn, void *cb_data);
-int refs_for_each_ref(struct ref_store *refs,
+int refs_for_each_ref(struct repository *repo,
 		      each_ref_fn fn, void *cb_data);
-int refs_for_each_ref_in(struct ref_store *refs, const char *prefix,
+int refs_for_each_ref_in(struct repository *repo, const char *prefix,
 			 each_ref_fn fn, void *cb_data);
-int refs_for_each_tag_ref(struct ref_store *refs,
+int refs_for_each_tag_ref(struct repository *repo,
 			  each_ref_fn fn, void *cb_data);
-int refs_for_each_branch_ref(struct ref_store *refs,
+int refs_for_each_branch_ref(struct repository *repo,
 			     each_ref_fn fn, void *cb_data);
-int refs_for_each_remote_ref(struct ref_store *refs,
+int refs_for_each_remote_ref(struct repository *repo,
 			     each_ref_fn fn, void *cb_data);
 
 /* just iterates the head ref. */

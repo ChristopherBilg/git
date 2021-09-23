@@ -10,13 +10,41 @@
 
 int ref_iterator_advance(struct ref_iterator *ref_iterator)
 {
-	return ref_iterator->vtable->advance(ref_iterator);
+	int ok;
+
+	while ((ok = ref_iterator->vtable->advance(ref_iterator)) == ITER_OK) {
+		if (ref_iterator->repo &&
+		    !ref_resolves_to_object(ref_iterator->refname,
+					    ref_iterator->repo,
+					    ref_iterator->oid,
+					    ref_iterator->flags))
+			continue;
+		return ITER_OK;
+	}
+	return ok;
+}
+
+enum ref_iterator_peel_result ref_iterator_peel_raw(
+		struct ref_iterator *ref_iterator,
+		struct object_id *peeled)
+{
+	return ref_iterator->vtable->peel(ref_iterator, peeled);
 }
 
 int ref_iterator_peel(struct ref_iterator *ref_iterator,
+		      struct repository *repo,
 		      struct object_id *peeled)
 {
-	return ref_iterator->vtable->peel(ref_iterator, peeled);
+	enum ref_iterator_peel_result result =
+		ref_iterator_peel_raw(ref_iterator, peeled);
+
+	if (repo != the_repository)
+		/* NEEDSWORK: make peel_object() work with all repositories */
+		BUG("ref_iterator_peel() can only be used with the_repository");
+	if (result == REF_ITERATOR_PEEL_INCONCLUSIVE)
+		return peel_object(ref_iterator->oid, peeled) == PEEL_PEELED ?
+			0 : -1;
+	return result == REF_ITERATOR_PEEL_SUCCESS ? 0 : -1;
 }
 
 int ref_iterator_abort(struct ref_iterator *ref_iterator)
@@ -51,8 +79,9 @@ static int empty_ref_iterator_advance(struct ref_iterator *ref_iterator)
 	return ref_iterator_abort(ref_iterator);
 }
 
-static int empty_ref_iterator_peel(struct ref_iterator *ref_iterator,
-				   struct object_id *peeled)
+static enum ref_iterator_peel_result empty_ref_iterator_peel(
+		struct ref_iterator *ref_iterator,
+		struct object_id *peeled)
 {
 	BUG("peel called for empty iterator");
 }
@@ -170,8 +199,9 @@ error:
 	return ITER_ERROR;
 }
 
-static int merge_ref_iterator_peel(struct ref_iterator *ref_iterator,
-				   struct object_id *peeled)
+static enum ref_iterator_peel_result merge_ref_iterator_peel(
+		struct ref_iterator *ref_iterator,
+		struct object_id *peeled)
 {
 	struct merge_ref_iterator *iter =
 		(struct merge_ref_iterator *)ref_iterator;
@@ -179,7 +209,7 @@ static int merge_ref_iterator_peel(struct ref_iterator *ref_iterator,
 	if (!iter->current) {
 		BUG("peel called before advance for merge iterator");
 	}
-	return ref_iterator_peel(*iter->current, peeled);
+	return ref_iterator_peel_raw(*iter->current, peeled);
 }
 
 static int merge_ref_iterator_abort(struct ref_iterator *ref_iterator)
@@ -355,13 +385,14 @@ static int prefix_ref_iterator_advance(struct ref_iterator *ref_iterator)
 	return ok;
 }
 
-static int prefix_ref_iterator_peel(struct ref_iterator *ref_iterator,
-				    struct object_id *peeled)
+static enum ref_iterator_peel_result prefix_ref_iterator_peel(
+		struct ref_iterator *ref_iterator,
+		struct object_id *peeled)
 {
 	struct prefix_ref_iterator *iter =
 		(struct prefix_ref_iterator *)ref_iterator;
 
-	return ref_iterator_peel(iter->iter0, peeled);
+	return ref_iterator_peel_raw(iter->iter0, peeled);
 }
 
 static int prefix_ref_iterator_abort(struct ref_iterator *ref_iterator)

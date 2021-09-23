@@ -810,15 +810,16 @@ static void status_submodule(const char *path, const struct object_id *ce_oid,
 			     displaypath);
 	} else if (!(flags & OPT_CACHED)) {
 		struct object_id oid;
-		struct ref_store *refs = get_submodule_ref_store(path);
+		struct repository subrepo;
 
-		if (!refs) {
+		if (repo_submodule_init(&subrepo, the_repository, path, null_oid())) {
 			print_status(flags, '-', path, ce_oid, displaypath);
 			goto cleanup;
 		}
-		if (refs_head_ref(refs, handle_submodule_head_ref, &oid))
+		if (refs_head_ref(&subrepo, handle_submodule_head_ref, &oid))
 			die(_("could not resolve HEAD ref inside the "
 			      "submodule '%s'"), path);
+		repo_clear(&subrepo);
 
 		print_status(flags, '+', path, &oid, displaypath);
 	} else {
@@ -1027,9 +1028,12 @@ static void generate_submodule_summary(struct summary_cb *info,
 
 	if (!info->cached && oideq(&p->oid_dst, null_oid())) {
 		if (S_ISGITLINK(p->mod_dst)) {
-			struct ref_store *refs = get_submodule_ref_store(p->sm_path);
-			if (refs)
-				refs_head_ref(refs, handle_submodule_head_ref, &p->oid_dst);
+			struct repository subrepo;
+
+			if (!repo_submodule_init(&subrepo, the_repository, p->sm_path, null_oid())) {
+				refs_head_ref(&subrepo, handle_submodule_head_ref, &p->oid_dst);
+				repo_clear(&subrepo);
+			}
 		} else if (S_ISLNK(p->mod_dst) || S_ISREG(p->mod_dst)) {
 			struct stat st;
 			int fd = open(p->sm_path, O_RDONLY);

@@ -755,12 +755,6 @@ static int files_ref_iterator_advance(struct ref_iterator *ref_iterator)
 		    ref_type(iter->iter0->refname) != REF_TYPE_PER_WORKTREE)
 			continue;
 
-		if (!(iter->flags & DO_FOR_EACH_INCLUDE_BROKEN) &&
-		    !ref_resolves_to_object(iter->iter0->refname,
-					    iter->iter0->oid,
-					    iter->iter0->flags))
-			continue;
-
 		iter->base.refname = iter->iter0->refname;
 		iter->base.oid = iter->iter0->oid;
 		iter->base.flags = iter->iter0->flags;
@@ -774,13 +768,14 @@ static int files_ref_iterator_advance(struct ref_iterator *ref_iterator)
 	return ok;
 }
 
-static int files_ref_iterator_peel(struct ref_iterator *ref_iterator,
-				   struct object_id *peeled)
+static enum ref_iterator_peel_result files_ref_iterator_peel(
+		struct ref_iterator *ref_iterator,
+		struct object_id *peeled)
 {
 	struct files_ref_iterator *iter =
 		(struct files_ref_iterator *)ref_iterator;
 
-	return ref_iterator_peel(iter->iter0, peeled);
+	return ref_iterator_peel_raw(iter->iter0, peeled);
 }
 
 static int files_ref_iterator_abort(struct ref_iterator *ref_iterator)
@@ -811,9 +806,6 @@ static struct ref_iterator *files_ref_iterator_begin(
 	struct files_ref_iterator *iter;
 	struct ref_iterator *ref_iterator;
 	unsigned int required_flags = REF_STORE_READ;
-
-	if (!(flags & DO_FOR_EACH_INCLUDE_BROKEN))
-		required_flags |= REF_STORE_ODB;
 
 	refs = files_downcast(ref_store, required_flags, "ref_iterator_begin");
 
@@ -847,10 +839,13 @@ static struct ref_iterator *files_ref_iterator_begin(
 	 * references, and (if needed) do our own check for broken
 	 * ones in files_ref_iterator_advance(), after we have merged
 	 * the packed and loose references.
+	 *
+	 * Do this by not supplying any repo, regardless of whether a repo was
+	 * supplied to files_ref_iterator_begin().
 	 */
 	packed_iter = refs_ref_iterator_begin(
 			refs->packed_ref_store, prefix, 0,
-			DO_FOR_EACH_INCLUDE_BROKEN);
+			NULL, 0);
 
 	overlay_iter = overlay_ref_iterator_begin(loose_iter, packed_iter);
 
@@ -1177,7 +1172,7 @@ static int should_pack_ref(const char *refname,
 		return 0;
 
 	/* Do not pack broken refs: */
-	if (!ref_resolves_to_object(refname, oid, ref_flags))
+	if (!ref_resolves_to_object(refname, the_repository, oid, ref_flags))
 		return 0;
 
 	return 1;
@@ -2152,8 +2147,9 @@ static int files_reflog_iterator_advance(struct ref_iterator *ref_iterator)
 	return ok;
 }
 
-static int files_reflog_iterator_peel(struct ref_iterator *ref_iterator,
-				   struct object_id *peeled)
+static enum ref_iterator_peel_result files_reflog_iterator_peel(
+		struct ref_iterator *ref_iterator,
+		struct object_id *peeled)
 {
 	BUG("ref_iterator_peel() called for reflog_iterator");
 }

@@ -1565,7 +1565,7 @@ void add_ref_exclusion(struct string_list **ref_excludes_p, const char *exclude)
 
 static void handle_refs(struct ref_store *refs,
 			struct rev_info *revs, unsigned flags,
-			int (*for_each)(struct ref_store *, each_ref_fn, void *))
+			int (*for_each)(struct repository *, each_ref_fn, void *))
 {
 	struct all_refs_cb cb;
 
@@ -1575,7 +1575,7 @@ static void handle_refs(struct ref_store *refs,
 	}
 
 	init_all_refs_cb(&cb, revs, flags);
-	for_each(refs, handle_one_ref, &cb);
+	for_each(revs->repo, handle_one_ref, &cb);
 }
 
 static void handle_one_reflog_commit(struct object_id *oid, void *cb_data)
@@ -2566,14 +2566,14 @@ static int for_each_bisect_ref(struct ref_store *refs, each_ref_fn fn,
 	return status;
 }
 
-static int for_each_bad_bisect_ref(struct ref_store *refs, each_ref_fn fn, void *cb_data)
+static int for_each_bad_bisect_ref(struct repository *repo, each_ref_fn fn, void *cb_data)
 {
-	return for_each_bisect_ref(refs, fn, cb_data, term_bad);
+	return for_each_bisect_ref(get_main_ref_store(repo), fn, cb_data, term_bad);
 }
 
-static int for_each_good_bisect_ref(struct ref_store *refs, each_ref_fn fn, void *cb_data)
+static int for_each_good_bisect_ref(struct repository *repo, each_ref_fn fn, void *cb_data)
 {
-	return for_each_bisect_ref(refs, fn, cb_data, term_good);
+	return for_each_bisect_ref(get_main_ref_store(repo), fn, cb_data, term_good);
 }
 
 static int handle_revision_pseudo_opt(struct rev_info *revs,
