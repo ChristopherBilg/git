@@ -73,6 +73,23 @@ static void read_packs_from_stdin(struct string_list *to)
 	strbuf_release(&buf);
 }
 
+static int git_multi_pack_index_write_config(const char *var, const char *value,
+					     void *cb)
+{
+	if (!strcmp(var, "pack.writebitmaphashcache")) {
+		if (git_config_bool(var, value))
+			opts.flags |= MIDX_WRITE_BITMAP_HASH_CACHE;
+		else
+			opts.flags &= ~MIDX_WRITE_BITMAP_HASH_CACHE;
+	}
+
+	/*
+	 * We should never make a fall-back call to 'git_default_config', since
+	 * this was already called in 'cmd_multi_pack_index()'.
+	 */
+	return 0;
+}
+
 static int cmd_multi_pack_index_write(int argc, const char **argv)
 {
 	struct option *options;
@@ -90,6 +107,10 @@ static int cmd_multi_pack_index_write(int argc, const char **argv)
 			N_("force progress reporting"), MIDX_PROGRESS),
 		OPT_END(),
 	};
+
+	opts.flags |= MIDX_WRITE_BITMAP_HASH_CACHE;
+
+	git_config(git_multi_pack_index_write_config, NULL);
 
 	options = add_common_options(builtin_multi_pack_index_write_options);
 
