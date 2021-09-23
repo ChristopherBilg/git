@@ -114,7 +114,69 @@ EOT
 }
 
 sub completion_helper {
-    print Git::command('format-patch', '--git-completion-helper');
+    my @send_email_flags = qw/
+    --8bit-encoding
+    --annotate
+    --batch-size
+    --bcc
+    --cc
+    --cc-cmd
+    --cc-cover
+    --chain-reply-to
+    --compose
+    --compose-encoding
+    --confirm
+    --dry-run
+    --dump-aliases
+    --envelope-sender
+    --force
+    --format-patch
+    --from
+    --identity
+    --in-reply-to
+    --no-annotate
+    --no-bcc
+    --no-cc
+    --no-cc-cover
+    --no-chain-reply-to
+    --no-format-patch
+    --no-signed-off-by-cc
+    --no-smtp-auth
+    --no-suppress-from
+    --no-thread
+    --no-to
+    --no-to-cover
+    --no-validate
+    --no-xmailer
+    --quiet
+    --relogin-delay
+    --reply-to
+    --sendmail-cmd
+    --signed-off-by-cc
+    --smtp-auth
+    --smtp-debug
+    --smtp-domain
+    --smtp-encryption
+    --smtp-pass
+    --smtp-server
+    --smtp-server-option
+    --smtp-server-port
+    --smtp-ssl
+    --smtp-ssl-cert-path
+    --smtp-user
+    --subject
+    --suppress-cc
+    --suppress-from
+    --thread
+    --to
+    --to-cmd
+    --to-cover
+    --transfer-encoding
+    --validate
+    --xmailer
+    /;
+    print "@send_email_flags";
+    print Git::command('format-patch', '--git-completion-helper'), "\n";
     exit(0);
 }
 
