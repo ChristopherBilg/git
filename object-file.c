@@ -1814,15 +1814,6 @@ int hash_object_file(const struct git_hash_algo *algo, const void *buf,
 	return 0;
 }
 
-/* Finalize a file on disk, and close it. */
-static void close_loose_object(int fd)
-{
-	if (fsync_object_files)
-		fsync_or_die(fd, "loose object file");
-	if (close(fd) != 0)
-		die_errno(_("error when closing loose object file"));
-}
-
 /* Size of directory component, including the ending '/' */
 static inline int directory_size(const char *filename)
 {
@@ -1928,17 +1919,8 @@ static int write_loose_object(const struct object_id *oid, char *hdr,
 		die(_("confused by unstable object source data for %s"),
 		    oid_to_hex(oid));
 
-	close_loose_object(fd);
-
-	if (mtime) {
-		struct utimbuf utb;
-		utb.actime = mtime;
-		utb.modtime = mtime;
-		if (utime(tmp_file.buf, &utb) < 0)
-			warning_errno(_("failed utime() on %s"), tmp_file.buf);
-	}
-
-	return finalize_object_file(tmp_file.buf, filename.buf);
+	return fsync_and_close_loose_object_bulk_checkin(fd, tmp_file.buf,
+							 filename.buf, mtime);
 }
 
 static int freshen_loose_object(const struct object_id *oid)
