@@ -1282,6 +1282,7 @@ endif
 
 ifeq ($(COMPUTE_HEADER_DEPENDENCIES),auto)
 dep_check = $(shell $(CC) $(ALL_CFLAGS) \
+	-Wno-pedantic \
 	-c -MF /dev/null -MQ /dev/null -MMD -MP \
 	-x c /dev/null -o /dev/null 2>&1; \
 	echo $$?)
