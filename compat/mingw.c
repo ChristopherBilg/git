@@ -2183,10 +2183,10 @@ enum EXTENDED_NAME_FORMAT {
 
 static char *get_extended_user_info(enum EXTENDED_NAME_FORMAT type)
 {
-	DECLARE_PROC_ADDR(secur32.dll, BOOL, GetUserNameExW,
-		enum EXTENDED_NAME_FORMAT, LPCWSTR, PULONG);
 	static wchar_t wbuffer[1024];
 	DWORD len;
+	DECLARE_PROC_ADDR(secur32.dll, BOOL, GetUserNameExW,
+		enum EXTENDED_NAME_FORMAT, LPCWSTR, PULONG);
 
 	if (!INIT_PROC_ADDR(GetUserNameExW))
 		return NULL;

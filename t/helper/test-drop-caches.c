@@ -86,9 +86,9 @@ static int cmd_dropcaches(void)
 {
 	HANDLE hProcess = GetCurrentProcess();
 	HANDLE hToken;
-	DECLARE_PROC_ADDR(ntdll.dll, DWORD, NtSetSystemInformation, INT, PVOID, ULONG);
 	SYSTEM_MEMORY_LIST_COMMAND command;
 	int status;
+	DECLARE_PROC_ADDR(ntdll.dll, DWORD, NtSetSystemInformation, INT, PVOID, ULONG);
 
 	if (!OpenProcessToken(hProcess, TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, &hToken))
 		return error("Can't open current process token");
